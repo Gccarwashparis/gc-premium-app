@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 import pandas as pd
 import psycopg2
 from psycopg2 import IntegrityError
@@ -16,11 +17,20 @@ NAMA_BISNIS = "GC Carwash Paris"
 ALAMAT_BISNIS = "JL. Parangtritis, Sewon Bantul, D.I Yogyakarta"
 
 # KONFIGURASI POSTGRESQL
-DB_HOST = "localhost"
-DB_NAME = "gccarwash_db"
-DB_USER = "garisonchee"  # Menyesuaikan dengan user default Mac Anda
-DB_PASS = ""             # Dikosongkan sesuai default Homebrew Mac
-DB_PORT = "5432"
+try:
+    # Mencoba membaca dari Streamlit Secrets (untuk di Cloud)
+    DB_HOST = st.secrets["DB_HOST"]
+    DB_NAME = st.secrets["DB_NAME"]
+    DB_USER = st.secrets["DB_USER"]
+    DB_PASS = st.secrets["DB_PASS"]
+    DB_PORT = st.secrets["DB_PORT"]
+except Exception:
+    # Jika gagal (berarti dijalankan di komputer lokal), gunakan nilai default
+    DB_HOST = "localhost"
+    DB_NAME = "gccarwash_db"
+    DB_USER = "garisonchee"
+    DB_PASS = ""
+    DB_PORT = "5432"
 
 @st.cache_resource
 def init_connection():
