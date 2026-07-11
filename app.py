@@ -1,12 +1,6 @@
 import streamlit as st
-import os
 import pandas as pd
-import qrcode
-from io import BytesIO
-import urllib.parse
-from datetime import datetime, timedelta, date
-from dateutil.relativedelta import relativedelta
-from collections import Counter
+# Hapus import psycopg2 jika tidak dipakai di tempat lain
 
 # 1. KONFIGURASI HALAMAN LEBAR PENUH
 st.set_page_config(layout="wide", page_title="GC Carwash Paris", page_icon="🚗")
@@ -14,38 +8,21 @@ st.set_page_config(layout="wide", page_title="GC Carwash Paris", page_icon="🚗
 NAMA_BISNIS = "GC Carwash Paris"
 ALAMAT_BISNIS = "JL. Parangtritis, Sewon Bantul, D.I Yogyakarta"
 
-# 2. KONFIGURASI KONEKSI DATABASE (Baru)
-@st.cache_resource
-def get_conn():
-    return st.connection("postgresql", type="sql", url=f"postgresql://{st.secrets['DB_USER']}:{st.secrets['DB_PASS']}@{st.secrets['DB_HOST']}:{st.secrets['DB_PORT']}/{st.secrets['DB_NAME']}")
-
-conn = get_conn()
+# 2. KONFIGURASI KONEKSI DATABASE (Baru & Bersih)
+# Streamlit otomatis membaca [connections.postgresql] dari Secrets
+conn = st.connection("postgresql", type="sql")
 
 # 3. FUNGSI DATABASE & LOGIN
-def init_connection():
-    try:
-        return psycopg2.connect(
-            host=st.secrets["DB_HOST"],
-            database=st.secrets["DB_NAME"],
-            user=st.secrets["DB_USER"],
-            password=st.secrets["DB_PASS"],
-            port=st.secrets["DB_PORT"]
-        )
-    except Exception as e:
-        st.error(f"Error Database: {e}")
-        return None
-
 def authenticate_user(username, password):
-    # Menggunakan conn yang sudah kita buat di atas
-    # conn.query mengembalikan DataFrame, kita ambil baris pertama jika ada
+    # Gunakan query parameter untuk mencegah SQL Injection
     query = "SELECT id, username, role FROM users WHERE username = :username AND password = :password"
     params = {"username": username, "password": password}
-    # Menjalankan query
+    
+    # conn.query sudah otomatis menangani caching
     df = conn.query(query, params=params)
+    
     if not df.empty:
-        # Mengambil data dari baris pertama DataFrame
-        user = df.iloc[0]
-        return {"id": user['id'], "username": user['username'], "role": user['role']}
+        return {"id": df.iloc[0]['id'], "username": df.iloc[0]['username'], "role": df.iloc[0]['role']}
     return None
 
 # 4. GERBANG LOGIN (SATPAM)
