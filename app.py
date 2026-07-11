@@ -42,6 +42,21 @@ if 'logged_in' not in st.session_state:
     st.session_state.user = None
     st.session_state.role = None
 
+    # Jika belum login, tampilkan form login dan hentikan aplikasi
+if not st.session_state.logged_in:
+    st.title("🔐 Login Sistem Carwash")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    
+    if st.button("Masuk"):
+        # Tambahkan logika login Anda di sini (cek ke database)
+        # Jika berhasil:
+        # st.session_state.logged_in = True
+        # st.rerun()
+        st.write("Silakan masukkan logika cek password Anda")
+        
+    st.stop()
+
 # INITIAL DATABASE TABLES
 cursor.execute("CREATE TABLE IF NOT EXISTS owners (id SERIAL PRIMARY KEY, nama TEXT, no_telp TEXT UNIQUE, total_cuci INTEGER DEFAULT 0, total_akumulasi INTEGER DEFAULT 0, total_cuci_motor INTEGER DEFAULT 0, loyalty_history TEXT DEFAULT '')")
 cursor.execute("CREATE TABLE IF NOT EXISTS vehicles (id SERIAL PRIMARY KEY, owner_id INTEGER, jenis_mobil TEXT, ukuran_mobil TEXT, plat_nomor TEXT UNIQUE, kategori_kendaraan TEXT DEFAULT 'Mobil', FOREIGN KEY(owner_id) REFERENCES owners(id) ON DELETE CASCADE)")
