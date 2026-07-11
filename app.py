@@ -1791,9 +1791,11 @@ with st.sidebar.expander(" 🚨 RESET ENGINE DATABASE"):
     konfirmasi_input = st.text_input("Ketik 'HAPUS PERMANEN' untuk reset:", "")
     if konfirmasi_input == "HAPUS PERMANEN":
         if st.button("🔥 DATA DIHAPUS PERMANEN", type="primary"):
+            st.warning("Fitur Reset Manual tidak lagi diperlukan dengan sistem koneksi baru.")
+            # Cukup hapus atau beri komentar pada baris-baris koneksi manual yang lama
         st.warning("Fitur Reset Manual tidak lagi diperlukan dengan sistem koneksi baru.")
         # Cukup hapus atau beri komentar pada baris-baris koneksi manual yang lama
-        
+
             fresh_cursor = fresh_conn.cursor()
             for table in ["owners", "vehicles", "transactions", "detailing_trx", "employee_bonuses", "laundry_karpet", "master_karyawan", "kasbon_karyawan", "absensi_karyawan", "upah_permobil_daily"]:
                 fresh_cursor.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
