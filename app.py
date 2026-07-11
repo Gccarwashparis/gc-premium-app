@@ -18,30 +18,29 @@ def get_native_connection():
         st.error(f"Koneksi gagal: {e}")
         st.stop()
 
-# 2. Wrapper yang lebih tahan banting (Hardened Wrapper)
+# 2. Wrapper yang tahan banting (Hardened Wrapper)
 class ConnectionWrapper:
     def __init__(self, conn):
         self._conn = conn
-    
     def __getattr__(self, name):
         return getattr(self._conn, name)
-    
     def query(self, sql, params=None):
         try:
-            # Selalu mencoba mengembalikan DataFrame
             result = pd.read_sql(sql, self._conn, params=params)
-            # Jika hasilnya None, kembalikan DataFrame kosong agar tidak error saat di-loop
             return result if result is not None else pd.DataFrame()
         except Exception:
-            # Jika query gagal, kembalikan DataFrame kosong agar fungsi migrasi Anda tidak crash
             return pd.DataFrame()
 
-# 3. Inisialisasi koneksi yang sudah dibungkus
+# 3. Inisialisasi koneksi & Cursor
 real_conn = get_native_connection()
 conn = ConnectionWrapper(real_conn)
-
-# 4. Inisialisasi cursor
 cursor = conn.cursor()
+
+# 4. INISIALISASI SESI LOGIN (Bagian yang hilang)
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.user = None
+    st.session_state.role = None
 
 # INITIAL DATABASE TABLES
 cursor.execute("CREATE TABLE IF NOT EXISTS owners (id SERIAL PRIMARY KEY, nama TEXT, no_telp TEXT UNIQUE, total_cuci INTEGER DEFAULT 0, total_akumulasi INTEGER DEFAULT 0, total_cuci_motor INTEGER DEFAULT 0, loyalty_history TEXT DEFAULT '')")
