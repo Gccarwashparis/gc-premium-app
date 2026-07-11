@@ -1,8 +1,6 @@
 import streamlit as st
 import os
 import pandas as pd
-import psycopg2
-from psycopg2 import IntegrityError
 import qrcode
 from io import BytesIO
 import urllib.parse
@@ -16,8 +14,12 @@ st.set_page_config(layout="wide", page_title="GC Carwash Paris", page_icon="🚗
 NAMA_BISNIS = "GC Carwash Paris"
 ALAMAT_BISNIS = "JL. Parangtritis, Sewon Bantul, D.I Yogyakarta"
 
-# 2. KONFIGURASI HALAMAN (Wajib di paling atas)
-st.set_page_config(layout="wide", page_title="GC Carwash Paris", page_icon="🚗")
+# 2. KONFIGURASI KONEKSI DATABASE (Baru)
+@st.cache_resource
+def get_conn():
+    return st.connection("postgresql", type="sql", url=f"postgresql://{st.secrets['DB_USER']}:{st.secrets['DB_PASS']}@{st.secrets['DB_HOST']}:{st.secrets['DB_PORT']}/{st.secrets['DB_NAME']}")
+
+conn = get_conn()
 
 # 3. FUNGSI DATABASE & LOGIN
 def init_connection():
