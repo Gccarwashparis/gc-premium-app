@@ -76,12 +76,22 @@ def get_db_conn():
     return st.connection("postgresql", type="sql")
 
 conn = get_db_conn()
-# --- JEMBATAN DARURAT (Tambahkan ini agar kode lama tidak error) ---
+# --- JEMBATAN DARURAT (Versi Pintar) ---
+from sqlalchemy import text # Pastikan import ini ada di baris paling atas app.py
+
 class DummyCursor:
     def execute(self, query, params=None):
-        return conn.query(query)
+        # Jika perintahnya adalah SELECT, gunakan conn.query
+        if query.strip().upper().startswith("SELECT"):
+            return conn.query(query)
+        # Jika perintahnya adalah CREATE/INSERT/UPDATE/DELETE, gunakan session
+        else:
+            with conn.session as s:
+                s.execute(text(query))
+                s.commit()
+                
     def fetchone(self):
-        return None # Sesuaikan jika perlu
+        return None
     def close(self):
         pass
 
