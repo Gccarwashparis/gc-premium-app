@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 import psycopg2
 
-# --- KONFIGURASI DATABASE ASLI ---
+# --- KONFIGURASI DATABASE ASLI MURNI ---
 @st.cache_resource
 def init_connection():
     return psycopg2.connect(
@@ -18,37 +18,16 @@ try:
     # Memanggil koneksi database
     conn = init_connection()
     
-    # Jika koneksi mati/terputus, bersihkan cache dan sambung ulang
+    # Jika koneksi mati/terputus, bersihkan cache dan sambung ulang otomatis
     if conn.closed != 0:
         st.cache_resource.clear()
         conn = init_connection()
         
+    # Mengaktifkan cursor bawaan psycopg2
     cursor = conn.cursor()
 except Exception as e:
     st.error(f"Gagal koneksi ke PostgreSQL: {e}")
     st.stop()
-
-import pandas as pd
-import datetime
-
-# --- HAPUS st.connection DAN SEMUA DUMMY KITA SEBELUMNYA ---
-# --- LALU PASTE KODE INI TEPAT DI ATAS "INITIAL DATABASE TABLES" ---
-
-import psycopg2
-
-# Kita buat koneksi asli yang akan selalu segar (fresh) agar tidak error terputus
-def get_db_connection():
-    return psycopg2.connect(
-        host=st.secrets["connections"]["postgresql"]["host"],
-        port=st.secrets["connections"]["postgresql"]["port"],
-        database=st.secrets["connections"]["postgresql"]["database"],
-        user=st.secrets["connections"]["postgresql"]["username"],
-        password=st.secrets["connections"]["postgresql"]["password"]
-    )
-
-# Membuat koneksi dan cursor asli (Bukan bohongan lagi!)
-conn = get_db_connection()
-cursor = conn.cursor()
 
 # INITIAL DATABASE TABLES
 cursor.execute("CREATE TABLE IF NOT EXISTS owners (id SERIAL PRIMARY KEY, nama TEXT, no_telp TEXT UNIQUE, total_cuci INTEGER DEFAULT 0, total_akumulasi INTEGER DEFAULT 0, total_cuci_motor INTEGER DEFAULT 0, loyalty_history TEXT DEFAULT '')")
