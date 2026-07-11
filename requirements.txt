@@ -4,3 +4,4 @@ sqlalchemy
 psycopg2-binary
 qrcode
 from datetime import date
+python-dateutil
