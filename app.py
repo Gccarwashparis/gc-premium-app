@@ -1,33 +1,39 @@
 import streamlit as st
 import pandas as pd
-import datetime
 import psycopg2
 
-# --- KONFIGURASI DATABASE ASLI MURNI ---
-@st.cache_resource
-def init_connection():
-    return psycopg2.connect(
-        host=st.secrets["connections"]["postgresql"]["host"],
-        port=st.secrets["connections"]["postgresql"]["port"],
-        database=st.secrets["connections"]["postgresql"]["database"],
-        user=st.secrets["connections"]["postgresql"]["username"],
-        password=st.secrets["connections"]["postgresql"]["password"]
-    )
+import streamlit as st
+import pandas as pd
+import psycopg2
 
-try:
-    # Memanggil koneksi database
-    conn = init_connection()
-    
-    # Jika koneksi mati/terputus, bersihkan cache dan sambung ulang otomatis
-    if conn.closed != 0:
-        st.cache_resource.clear()
-        conn = init_connection()
-        
-    # Mengaktifkan cursor bawaan psycopg2
-    cursor = conn.cursor()
-except Exception as e:
-    st.error(f"Gagal koneksi ke PostgreSQL: {e}")
-    st.stop()
+# 1. Konfigurasi koneksi murni psycopg2
+@st.cache_resource
+def get_native_connection():
+    try:
+        conn = psycopg2.connect(
+            host=st.secrets["connections"]["postgresql"]["host"],
+            port=st.secrets["connections"]["postgresql"]["port"],
+            database=st.secrets["connections"]["postgresql"]["database"],
+            user=st.secrets["connections"]["postgresql"]["username"],
+            password=st.secrets["connections"]["postgresql"]["password"]
+        )
+        return conn
+    except Exception as e:
+        st.error(f"Koneksi gagal: {e}")
+        st.stop()
+
+# 2. Inisialisasi koneksi
+conn = get_native_connection()
+
+# --- SHIM: Menambahkan fungsi .query() ke psycopg2 agar tidak error ---
+# Kode lama Anda memanggil conn.query(), ini akan mencegah error AttributeError
+def patched_query(sql):
+    return pd.read_sql(sql, conn)
+conn.query = patched_query 
+# ----------------------------------------------------------------------
+
+# 3. Inisialisasi cursor untuk kode lama Anda
+cursor = conn.cursor()
 
 # INITIAL DATABASE TABLES
 cursor.execute("CREATE TABLE IF NOT EXISTS owners (id SERIAL PRIMARY KEY, nama TEXT, no_telp TEXT UNIQUE, total_cuci INTEGER DEFAULT 0, total_akumulasi INTEGER DEFAULT 0, total_cuci_motor INTEGER DEFAULT 0, loyalty_history TEXT DEFAULT '')")
