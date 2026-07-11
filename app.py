@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 from datetime import date
+from dateutil.relativedelta import relativedelta
 
 # 1. Konfigurasi koneksi murni psycopg2
 @st.cache_resource
