@@ -76,6 +76,17 @@ def get_db_conn():
     return st.connection("postgresql", type="sql")
 
 conn = get_db_conn()
+# --- JEMBATAN DARURAT (Tambahkan ini agar kode lama tidak error) ---
+class DummyCursor:
+    def execute(self, query, params=None):
+        return conn.query(query)
+    def fetchone(self):
+        return None # Sesuaikan jika perlu
+    def close(self):
+        pass
+
+cursor = DummyCursor()
+# ------------------------------------------------------------------
 
 # MASTER DATA HARGA MOBIL
 DATA_PAKET_MOBIL = {
