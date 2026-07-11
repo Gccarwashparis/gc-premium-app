@@ -36,15 +36,16 @@ def init_connection():
         return None
 
 def authenticate_user(username, password):
-    conn = init_connection()
-    if not conn: return None
-    cur = conn.cursor()
-    cur.execute("SELECT id, username, role FROM users WHERE username = %s AND password = %s", (username, password))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
-    if user:
-        return {"id": user[0], "username": user[1], "role": user[2]}
+    # Menggunakan conn yang sudah kita buat di atas
+    # conn.query mengembalikan DataFrame, kita ambil baris pertama jika ada
+    query = "SELECT id, username, role FROM users WHERE username = :username AND password = :password"
+    params = {"username": username, "password": password}
+    # Menjalankan query
+    df = conn.query(query, params=params)
+    if not df.empty:
+        # Mengambil data dari baris pertama DataFrame
+        user = df.iloc[0]
+        return {"id": user['id'], "username": user['username'], "role": user['role']}
     return None
 
 # 4. GERBANG LOGIN (SATPAM)
