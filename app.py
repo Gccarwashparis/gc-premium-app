@@ -16,6 +16,65 @@ st.set_page_config(layout="wide", page_title="GC Carwash Paris", page_icon="🚗
 NAMA_BISNIS = "GC Carwash Paris"
 ALAMAT_BISNIS = "JL. Parangtritis, Sewon Bantul, D.I Yogyakarta"
 
+# 2. KONFIGURASI HALAMAN (Wajib di paling atas)
+st.set_page_config(layout="wide", page_title="GC Carwash Paris", page_icon="🚗")
+
+# 3. FUNGSI DATABASE & LOGIN
+def init_connection():
+    try:
+        return psycopg2.connect(
+            host=st.secrets["DB_HOST"],
+            database=st.secrets["DB_NAME"],
+            user=st.secrets["DB_USER"],
+            password=st.secrets["DB_PASS"],
+            port=st.secrets["DB_PORT"]
+        )
+    except Exception as e:
+        st.error(f"Error Database: {e}")
+        return None
+
+def authenticate_user(username, password):
+    conn = init_connection()
+    if not conn: return None
+    cur = conn.cursor()
+    cur.execute("SELECT id, username, role FROM users WHERE username = %s AND password = %s", (username, password))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    if user:
+        return {"id": user[0], "username": user[1], "role": user[2]}
+    return None
+
+# 4. GERBANG LOGIN (SATPAM)
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.user_info = None
+
+if not st.session_state.logged_in:
+    st.title("🔐 Login Sistem Carwash")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    
+    if st.button("Masuk"):
+        user = authenticate_user(username, password)
+        if user:
+            st.session_state.logged_in = True
+            st.session_state.user_info = user
+            st.rerun()
+        else:
+            st.error("Username atau Password salah!")
+    
+    st.stop() # <--- INI KUNCI RAHASIANYA. Kode di bawah ini tidak akan jalan kalau belum login.
+
+# 4. APLIKASI UTAMA (Hanya muncul setelah login)
+st.sidebar.success(f"👤 Login sebagai: {st.session_state.user_info['username']}")
+if st.sidebar.button("Keluar (Logout)"):
+    st.session_state.logged_in = False
+    st.session_state.user_info = None
+    st.rerun()
+
+st.sidebar.divider()
+
 # KONFIGURASI POSTGRESQL
 try:
     # Mencoba membaca dari Streamlit Secrets (untuk di Cloud)
