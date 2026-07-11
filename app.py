@@ -49,11 +49,20 @@ if not st.session_state.logged_in:
     password = st.text_input("Password", type="password")
     
     if st.button("Masuk"):
-        # Tambahkan logika login Anda di sini (cek ke database)
-        # Jika berhasil:
-        # st.session_state.logged_in = True
-        # st.rerun()
-        st.write("Silakan masukkan logika cek password Anda")
+        # STREAMING_CHUNK:Memeriksa kredensial ke database...
+        query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+        user_data = conn.query(query)
+        
+        if not user_data.empty:
+            # Login Berhasil
+            st.session_state.logged_in = True
+            st.session_state.user = user_data.iloc[0]['username']
+            st.session_state.role = user_data.iloc[0]['role']
+            st.success("Login berhasil! Memuat...")
+            st.rerun()
+        else:
+            # Login Gagal
+            st.error("Username atau Password salah!")
         
     st.stop()
 
