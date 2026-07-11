@@ -72,14 +72,10 @@ except Exception:
     DB_PORT = "5432"
 
 @st.cache_resource
-def init_connection():
-    return psycopg2.connect(
-        host=DB_HOST,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS,
-        port=DB_PORT
-    )
+def get_conn():
+    return st.connection("postgresql", type="sql")
+
+conn = get_conn()
 
 try:
     conn = init_connection()
@@ -160,10 +156,10 @@ conn.commit()
 # AUTO-MIGRATION
 def auto_migrate(query):
     try:
-        cursor.execute(query)
-        conn.commit()
-    except psycopg2.Error:
-        conn.rollback()
+        # Menggunakan koneksi baru
+        conn.query(query)
+    except Exception as e:
+        st.error(f"Gagal migrasi: {e}")
 
 auto_migrate("ALTER TABLE master_karyawan ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1")
 auto_migrate("ALTER TABLE master_karyawan ADD COLUMN IF NOT EXISTS gaji_mingguan_master REAL DEFAULT 0")
@@ -1794,14 +1790,9 @@ st.sidebar.markdown("---")
 with st.sidebar.expander(" 🚨 RESET ENGINE DATABASE"):
     konfirmasi_input = st.text_input("Ketik 'HAPUS PERMANEN' untuk reset:", "")
     if konfirmasi_input == "HAPUS PERMANEN":
-        if st.button("🔥 DATA DIHAPUS PERMANEN", type="primary", use_container_width=True):
-            cursor.close(); conn.close()
-            fresh_conn = psycopg2.connect(
-                host=DB_HOST,
-                database=DB_NAME,
-                user=DB_USER,
-                password=DB_PASS,
-                port=DB_PORT
+        if st.button("🔥 DATA DIHAPUS PERMANEN", type="primary"):
+        st.warning("Fitur Reset Manual tidak lagi diperlukan dengan sistem koneksi baru.")
+        # Cukup hapus atau beri komentar pada baris-baris koneksi manual yang lama
             )
             fresh_cursor = fresh_conn.cursor()
             for table in ["owners", "vehicles", "transactions", "detailing_trx", "employee_bonuses", "laundry_karpet", "master_karyawan", "kasbon_karyawan", "absensi_karyawan", "upah_permobil_daily"]:
