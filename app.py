@@ -1,20 +1,16 @@
 import streamlit as st
 import pandas as pd
-# Hapus import psycopg2 jika tidak dipakai di tempat lain
 
-# 1. KONFIGURASI HALAMAN LEBAR PENUH
+# 1. KONFIGURASI HALAMAN
 st.set_page_config(layout="wide", page_title="GC Carwash Paris", page_icon="🚗")
 
-NAMA_BISNIS = "GC Carwash Paris"
-ALAMAT_BISNIS = "JL. Parangtritis, Sewon Bantul, D.I Yogyakarta"
-
-# 2. KONFIGURASI KONEKSI DATABASE (Baru & Bersih)
-# Streamlit otomatis membaca [connections.postgresql] dari Secrets
+# 2. KONFIGURASI KONEKSI DATABASE (Modern)
+# Streamlit secara otomatis menggunakan konfigurasi dari [connections.postgresql] di Secrets
 conn = st.connection("postgresql", type="sql")
 
-# 3. FUNGSI DATABASE & LOGIN
+# 3. FUNGSI AUTHENTICATE (Tanpa psycopg2)
 def authenticate_user(username, password):
-    # Gunakan query parameter untuk mencegah SQL Injection
+    # Menggunakan conn.query untuk mengambil data (cara modern)
     query = "SELECT id, username, role FROM users WHERE username = :username AND password = :password"
     params = {"username": username, "password": password}
     
@@ -24,6 +20,10 @@ def authenticate_user(username, password):
     if not df.empty:
         return {"id": df.iloc[0]['id'], "username": df.iloc[0]['username'], "role": df.iloc[0]['role']}
     return None
+
+# --- CONTOH TAMPILAN ---
+st.title("GC Carwash Paris")
+st.write("Silakan login untuk memulai.")
 
 # 4. GERBANG LOGIN (SATPAM)
 if 'logged_in' not in st.session_state:
@@ -46,7 +46,7 @@ if not st.session_state.logged_in:
     
     st.stop() # <--- INI KUNCI RAHASIANYA. Kode di bawah ini tidak akan jalan kalau belum login.
 
-# 4. APLIKASI UTAMA (Hanya muncul setelah login)
+# 5. APLIKASI UTAMA (Hanya muncul setelah login)
 st.sidebar.success(f"👤 Login sebagai: {st.session_state.user_info['username']}")
 if st.sidebar.button("Keluar (Logout)"):
     st.session_state.logged_in = False
