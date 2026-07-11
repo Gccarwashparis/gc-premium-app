@@ -1,153 +1,54 @@
 import streamlit as st
 import pandas as pd
+import datetime
+import psycopg2
 
-# 1. KONFIGURASI HALAMAN
-st.set_page_config(layout="wide", page_title="GC Carwash Paris", page_icon="🚗")
-
-# 2. KONFIGURASI KONEKSI DATABASE (Modern)
-# Streamlit secara otomatis menggunakan konfigurasi dari [connections.postgresql] di Secrets
-conn = st.connection("postgresql", type="sql")
-
-# 3. FUNGSI AUTHENTICATE (Tanpa psycopg2)
-def authenticate_user(username, password):
-    # Menggunakan conn.query untuk mengambil data (cara modern)
-    query = "SELECT id, username, role FROM users WHERE username = :username AND password = :password"
-    params = {"username": username, "password": password}
-    
-    # conn.query sudah otomatis menangani caching
-    df = conn.query(query, params=params)
-    
-    if not df.empty:
-        return {"id": df.iloc[0]['id'], "username": df.iloc[0]['username'], "role": df.iloc[0]['role']}
-    return None
-
-# --- CONTOH TAMPILAN ---
-st.title("GC Carwash Paris")
-st.write("Silakan login untuk memulai.")
-
-# 4. GERBANG LOGIN (SATPAM)
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.user_info = None
-
-if not st.session_state.logged_in:
-    st.title("🔐 Login Sistem Carwash")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    
-    if st.button("Masuk"):
-        user = authenticate_user(username, password)
-        if user:
-            st.session_state.logged_in = True
-            st.session_state.user_info = user
-            st.rerun()
-        else:
-            st.error("Username atau Password salah!")
-    
-    st.stop() # <--- INI KUNCI RAHASIANYA. Kode di bawah ini tidak akan jalan kalau belum login.
-
-# 5. APLIKASI UTAMA (Hanya muncul setelah login)
-st.sidebar.success(f"👤 Login sebagai: {st.session_state.user_info['username']}")
-if st.sidebar.button("Keluar (Logout)"):
-    st.session_state.logged_in = False
-    st.session_state.user_info = None
-    st.rerun()
-
-st.sidebar.divider()
-
-# KONFIGURASI POSTGRESQL
-try:
-    # Mencoba membaca dari Streamlit Secrets (untuk di Cloud)
-    DB_HOST = st.secrets["DB_HOST"]
-    DB_NAME = st.secrets["DB_NAME"]
-    DB_USER = st.secrets["DB_USER"]
-    DB_PASS = st.secrets["DB_PASS"]
-    DB_PORT = st.secrets["DB_PORT"]
-except Exception:
-    # Jika gagal (berarti dijalankan di komputer lokal), gunakan nilai default
-    DB_HOST = "localhost"
-    DB_NAME = "gccarwash_db"
-    DB_USER = "garisonchee"
-    DB_PASS = ""
-    DB_PORT = "5432"
-
+# --- KONFIGURASI DATABASE ASLI ---
 @st.cache_resource
-def get_db_conn():
-    return st.connection("postgresql", type="sql")
+def init_connection():
+    return psycopg2.connect(
+        host=st.secrets["connections"]["postgresql"]["host"],
+        port=st.secrets["connections"]["postgresql"]["port"],
+        database=st.secrets["connections"]["postgresql"]["database"],
+        user=st.secrets["connections"]["postgresql"]["username"],
+        password=st.secrets["connections"]["postgresql"]["password"]
+    )
 
-conn = get_db_conn()
-# --- JEMBATAN DARURAT (Versi Pintar) ---
-from sqlalchemy import text # Pastikan import ini ada di baris paling atas app.py
+try:
+    # Memanggil koneksi database
+    conn = init_connection()
+    
+    # Jika koneksi mati/terputus, bersihkan cache dan sambung ulang
+    if conn.closed != 0:
+        st.cache_resource.clear()
+        conn = init_connection()
+        
+    cursor = conn.cursor()
+except Exception as e:
+    st.error(f"Gagal koneksi ke PostgreSQL: {e}")
+    st.stop()
 
-class DummyCursor:
-    def execute(self, query, params=None):
-        # Jika perintahnya adalah SELECT, gunakan conn.query
-        if query.strip().upper().startswith("SELECT"):
-            return conn.query(query)
-        # Jika perintahnya adalah CREATE/INSERT/UPDATE/DELETE, gunakan session
-        else:
-            with conn.session as s:
-                s.execute(text(query))
-                s.commit()
-                
-    def fetchone(self):
-        return None
-    def close(self):
-        pass
+import pandas as pd
+import datetime
 
-cursor = DummyCursor()
-# ------------------------------------------------------------------
+# --- HAPUS st.connection DAN SEMUA DUMMY KITA SEBELUMNYA ---
+# --- LALU PASTE KODE INI TEPAT DI ATAS "INITIAL DATABASE TABLES" ---
 
-# MASTER DATA HARGA MOBIL
-DATA_PAKET_MOBIL = {
-    "XL": {
-        "Cuci Silver": 40000, "Cuci Gold": 55000, "Cuci Premium": 65000, "Paket Platinum": 80000, "Full Wax": 120000,
-        "PAKET 1 (CUCI HIDROLIK + BERSIHKAN JAMUR KACA)": 200000, "PAKET 2 (CUCI HIDROLIK + BERSIHKAN KOTORAN ASPAL)": 200000,
-        "PAKET 3 (CUCI HIDROLIK + DETAILING INTERIOR)": 900000, "PAKET 4 (CUCI HIDROLIK + DETAILING LUAR DALAM)": 1800000,
-        "PAKET 5 (CUCI HIDROLIK + DETAILING MESIN)": 400000, "PAKET 6 (CUCI HIDROLIK + POLES FULL BODY)": 1000000,
-        "PAKET 7 (CUCI HIDROLIK + POLES MIKA LAMPU)": 200000, "PAKET 8 (CUCI HIDROLIK + AMPLAS & NANO BURN MIKA LAMPU)": 400000,
-        "PAKET 9 (CUCI HIDROLIK + POLES PERPART)": 200000, "Paket Coating": 4700000, "Tidak Cuci / Hanya Tambahan": 0
-    },
-    "L": {
-        "Cuci Silver": 35000, "Cuci Gold": 50000, "Cuci Premium": 60000, "Paket Platinum": 75000, "Full Wax": 110000,
-        "PAKET 1 (CUCI HIDROLIK + BERSIHKAN JAMUR KACA)": 170000, "PAKET 2 (CUCI HIDROLIK + BERSIHKAN KOTORAN ASPAL)": 170000,
-        "PAKET 3 (CUCI HIDROLIK + DETAILING INTERIOR)": 700000, "PAKET 4 (CUCI HIDROLIK + DETAILING LUAR DALAM)": 1450000,
-        "PAKET 5 (CUCI HIDROLIK + DETAILING MESIN)": 350000, "PAKET 6 (CUCI HIDROLIK + POLES FULL BODY)": 850000,
-        "PAKET 7 (CUCI HIDROLIK + POLES MIKA LAMPU)": 170000, "PAKET 8 (CUCI HIDROLIK + AMPLAS & NANO BURN MIKA LAMPU)": 350000,
-        "PAKET 9 (CUCI HIDROLIK + POLES PERPART)": 170000, "Paket Coating": 4300000, "Tidak Cuci / Hanya Tambahan": 0
-    },
-    "M": {
-        "Cuci Silver": 35000, "Cuci Gold": 45000, "Cuci Premium": 60000, "Paket Platinum": 75000, "Full Wax": 100000,
-        "PAKET 1 (CUCI HIDROLIK + BERSIHKAN JAMUR KACA)": 160000, "PAKET 2 (CUCI HIDROLIK + BERSIHKAN KOTORAN ASPAL)": 160000,
-        "PAKET 3 (CUCI HIDROLIK + DETAILING INTERIOR)": 600000, "PAKET 4 (CUCI HIDROLIK + DETAILING LUAR DALAM)": 1250000,
-        "PAKET 5 (CUCI HIDROLIK + DETAILING MESIN)": 300000, "PAKET 6 (CUCI HIDROLIK + POLES FULL BODY)": 750000,
-        "PAKET 7 (CUCI HIDROLIK + POLES MIKA LAMPU)": 160000, "PAKET 8 (CUCI HIDROLIK + AMPLAS & NANO BURN MIKA LAMPU)": 300000,
-        "PAKET 9 (CUCI HIDROLIK + POLES PERPART)": 160000, "Paket Coating": 3700000, "Tidak Cuci / Hanya Tambahan": 0
-    },
-    "S": {
-        "Cuci Silver": 30000, "Cuci Gold": 40000, "Cuci Premium": 55000, "Paket Platinum": 70000, "Full Wax": 90000,
-        "PAKET 1 (CUCI HIDROLIK + BERSIHKAN JAMUR KACA)": 150000, "PAKET 2 (CUCI HIDROLIK + BERSIHKAN KOTORAN ASPAL)": 150000,
-        "PAKET 3 (CUCI HIDROLIK + DETAILING INTERIOR)": 500000, "PAKET 4 (CUCI HIDROLIK + DETAILING LUAR DALAM)": 1050000,
-        "PAKET 5 (CUCI HIDROLIK + DETAILING MESIN)": 250000, "PAKET 6 (CUCI HIDROLIK + POLES FULL BODY)": 650000,
-        "PAKET 7 (CUCI HIDROLIK + POLES MIKA LAMPU)": 150000, "PAKET 8 (CUCI HIDROLIK + AMPLAS & NANO BURN MIKA LAMPU)": 250000,
-        "PAKET 9 (CUCI HIDROLIK + POLES PERPART)": 150000, "Paket Coating": 3300000, "Tidak Cuci / Hanya Tambahan": 0
-    }
-}
+import psycopg2
 
-DATA_PAKET_MOTOR = {
-    "M": {"Cuci Biasa": 15000, "Cuci Wax": 20000, "Tidak Cuci / Hanya Tambahan": 0},
-    "L": {"Cuci Biasa": 20000, "Cuci Wax": 25000, "Tidak Cuci / Hanya Tambahan": 0},
-    "XL": {"Cuci Biasa": 25000, "Cuci Wax": 30000, "Tidak Cuci / Hanya Tambahan": 0},
-    "HARLEY": {"Cuci Biasa": 35000, "Cuci Wax": 40000, "Tidak Cuci / Hanya Tambahan": 0}
-}
+# Kita buat koneksi asli yang akan selalu segar (fresh) agar tidak error terputus
+def get_db_connection():
+    return psycopg2.connect(
+        host=st.secrets["connections"]["postgresql"]["host"],
+        port=st.secrets["connections"]["postgresql"]["port"],
+        database=st.secrets["connections"]["postgresql"]["database"],
+        user=st.secrets["connections"]["postgresql"]["username"],
+        password=st.secrets["connections"]["postgresql"]["password"]
+    )
 
-DATA_TAMBAHAN = {
-    "XL": {"Tanpa Tambahan": 0, "Paket Oli Plastik": 30000, "Layanan Custom / Lainnya": 0},
-    "L": {"Tanpa Tambahan": 0, "Paket Oli Plastik": 30000, "Layanan Custom / Lainnya": 0},
-    "M": {"Tanpa Tambahan": 0, "Paket Oli Plastik": 25000, "Layanan Custom / Lainnya": 0},
-    "S": {"Tanpa Tambahan": 0, "Paket Oli Plastik": 20000, "Layanan Custom / Lainnya": 0},
-    "HARLEY": {"Tanpa Tambahan": 0, "Paket Oli Plastik": 35000, "Layanan Custom / Lainnya": 0}
-}
+# Membuat koneksi dan cursor asli (Bukan bohongan lagi!)
+conn = get_db_connection()
+cursor = conn.cursor()
 
 # INITIAL DATABASE TABLES
 cursor.execute("CREATE TABLE IF NOT EXISTS owners (id SERIAL PRIMARY KEY, nama TEXT, no_telp TEXT UNIQUE, total_cuci INTEGER DEFAULT 0, total_akumulasi INTEGER DEFAULT 0, total_cuci_motor INTEGER DEFAULT 0, loyalty_history TEXT DEFAULT '')")
