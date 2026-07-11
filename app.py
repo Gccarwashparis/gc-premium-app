@@ -72,21 +72,10 @@ except Exception:
     DB_PORT = "5432"
 
 @st.cache_resource
-def get_conn():
+def get_db_conn():
     return st.connection("postgresql", type="sql")
 
-conn = get_conn()
-
-try:
-    conn = init_connection()
-    if conn.closed != 0:
-        st.cache_resource.clear()
-        conn = init_connection()
-    conn.autocommit = False
-    cursor = conn.cursor()
-except Exception as e:
-    st.error(f"Gagal koneksi ke PostgreSQL: {e}")
-    st.stop()
+conn = get_db_conn()
 
 # MASTER DATA HARGA MOBIL
 DATA_PAKET_MOBIL = {
