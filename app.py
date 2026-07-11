@@ -2,10 +2,6 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 
-import streamlit as st
-import pandas as pd
-import psycopg2
-
 # 1. Konfigurasi koneksi murni psycopg2
 @st.cache_resource
 def get_native_connection():
@@ -22,17 +18,24 @@ def get_native_connection():
         st.error(f"Koneksi gagal: {e}")
         st.stop()
 
-# 2. Inisialisasi koneksi
-conn = get_native_connection()
+# 2. Membuat Wrapper agar conn.query() bisa dipakai
+class ConnectionWrapper:
+    def __init__(self, conn):
+        self._conn = conn
+    
+    def __getattr__(self, name):
+        # Meneruskan semua pemanggilan (seperti .cursor(), .commit()) ke objek asli
+        return getattr(self._conn, name)
+    
+    def query(self, sql):
+        # Menambahkan fungsi query agar tidak error
+        return pd.read_sql(sql, self._conn)
 
-# --- SHIM: Menambahkan fungsi .query() ke psycopg2 agar tidak error ---
-# Kode lama Anda memanggil conn.query(), ini akan mencegah error AttributeError
-def patched_query(sql):
-    return pd.read_sql(sql, conn)
-conn.query = patched_query 
-# ----------------------------------------------------------------------
+# 3. Inisialisasi koneksi yang sudah dibungkus
+real_conn = get_native_connection()
+conn = ConnectionWrapper(real_conn)
 
-# 3. Inisialisasi cursor untuk kode lama Anda
+# 4. Inisialisasi cursor untuk kode lama Anda
 cursor = conn.cursor()
 
 # INITIAL DATABASE TABLES
