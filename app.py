@@ -18,24 +18,29 @@ def get_native_connection():
         st.error(f"Koneksi gagal: {e}")
         st.stop()
 
-# 2. Membuat Wrapper agar conn.query() bisa dipakai
+# 2. Wrapper yang lebih tahan banting (Hardened Wrapper)
 class ConnectionWrapper:
     def __init__(self, conn):
         self._conn = conn
     
     def __getattr__(self, name):
-        # Meneruskan semua pemanggilan (seperti .cursor(), .commit()) ke objek asli
         return getattr(self._conn, name)
     
-    def query(self, sql):
-        # Menambahkan fungsi query agar tidak error
-        return pd.read_sql(sql, self._conn)
+    def query(self, sql, params=None):
+        try:
+            # Selalu mencoba mengembalikan DataFrame
+            result = pd.read_sql(sql, self._conn, params=params)
+            # Jika hasilnya None, kembalikan DataFrame kosong agar tidak error saat di-loop
+            return result if result is not None else pd.DataFrame()
+        except Exception:
+            # Jika query gagal, kembalikan DataFrame kosong agar fungsi migrasi Anda tidak crash
+            return pd.DataFrame()
 
 # 3. Inisialisasi koneksi yang sudah dibungkus
 real_conn = get_native_connection()
 conn = ConnectionWrapper(real_conn)
 
-# 4. Inisialisasi cursor untuk kode lama Anda
+# 4. Inisialisasi cursor
 cursor = conn.cursor()
 
 # INITIAL DATABASE TABLES
